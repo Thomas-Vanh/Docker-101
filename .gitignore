@@ -1,2 +1,2 @@
-.env
-certs/
+docker-cont/.env
+docker-cont/certs/
