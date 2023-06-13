@@ -1,0 +1,99 @@
+version: "3"
+services:
+  traefik:
+    image: "traefik:v2.9"
+    container_name: traefik
+    command:
+      #- "--log.level=DEBUG"
+      - "--api.insecure=true"
+      - "--providers.docker"
+    ports:
+      - "80:80"
+      - "443:443"
+      - "8080:8080"
+    volumes:
+      - "/var/run/docker.sock:/var/run/docker.sock"
+      - "./traefik.yml:/etc/traefik/traefik.yml:ro"
+      - "./tls.yml:/etc/traefik/tls.yml:ro"
+      - "./certs:/etc/certs:ro"
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.api.rule=Host(`traefik.${DOMAIN}`)"
+      - "traefik.http.router.api.tls.certresolver=certificato"
+      - "traefik.http.routers.api.tls.domains[0].main=*.${DOMAIN}"
+      - "traefik.http.routers.api.service=api@internal"
+
+  db:
+    image: mysql:latest
+    restart: always
+    environment:
+      MYSQL_ROOT_PASSWORD: somewordpress
+    networks:
+      - db_net
+    volumes:
+      - db_data:/var/lib/mysql
+      - ./sql:/docker-entrypoint-initdb.d/
+
+  wordpress:
+    depends_on:
+      - db
+    image: wordpress:latest
+    container_name: wp
+    restart: always
+    ports:
+      - "7000:80"
+    networks:
+      - db_net
+    environment:
+      WORDPRESS_DB_HOST: db:3306
+      WORDPRESS_DB_USER: wordpress
+      WORDPRESS_DB_PASSWORD: secret
+      WORDPRESS_DB_NAME: wordpress
+
+    volumes:
+      - /var/www/html
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.wordpress.rule=Host(`wordpress.$DOMAIN`)"
+      - "traefik.http.routers.wordpress.tls=true"
+      - "traefik/http.routers.wordpress.tls.tls.domains[0].main=wordpress.$DOMAIN"
+      - "traefik/http.routers.wordpress.tls.tls.domains[0].sans=wordpress-*.$DOMAIN"
+
+  drupal:
+    depends_on:
+      - db
+    image: drupal:latest
+    container_name: dp
+    restart: always
+    ports:
+      - "7080:80"
+    environment:
+      DRUPAL_DB_HOST: db
+      DRUPAL_DB_USER: drupal
+      DRUPAL_DB_PASSWORD: secret
+      DRUPAL_DB_NAME: drupal
+    volumes:
+      - drupal_modules:/var/www/html/modules
+      - drupal_profiles:/var/www/html/profiles
+      - drupal_themes:/var/www/html/themes
+      - drupal_sites:/var/www/html/sites
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.drupal.rule=Host(`drupal.$DOMAIN`)"
+      - "traefik.http.routers.drupal.tls=true"
+      - "traefik/http.router.drupal.tls.tls.domain[0].main=drupal.$DOMAIN"
+      - "traefik/http.routers.drupal.tls.tls.domains[0].sans=drupal-*.$DOMAIN"
+
+networks:
+
+  db_net:
+
+
+volumes:
+  db_data:
+  drupal_modules:
+  drupal_profiles:
+  drupal_themes:
+  drupal_sites:
+
+

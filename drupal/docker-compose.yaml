@@ -1,0 +1,16 @@
+version: "3.3"
+services:
+  drupal:
+    image: drupal:latest
+    volumes:
+       - dp_data:/var/www/html
+    ports:
+      - "81:80"
+    restart: always
+    environment:
+      DRUPAL_DB_HOST : db
+      DRUPAL_DB_USER: drupal
+      DRUPAL_DB_PASSWORD: drupal
+      DRUPAL_DB_NAME: drupal
+volumes:
+  dp_data:
